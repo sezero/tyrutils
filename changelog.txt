@@ -1,3 +1,13 @@
+2020-07-25 TyrUtils v0.16
+
+* Added 64-bit builds for windows
+* qbsp: fix the coordinate displayed in degenerate edge error message
+* qbsp: fix disksize calculation when compiling in textures from 'wad3' format wads
+* qbsp: fix handling of absolute paths to wad files beginning with '/' (mac/linux)
+* light: fix lightmap extents calculation precision to match old x87 fpu
+* light: add option to generate a lit file without modifying the bsp
+* bsputil: fix bug exporting textures from bsps that have missing textures
+
 2014-02-16 TyrUtils v0.15
 
 * qbsp: Cope with textures names containing '{' or '}' (e.g. for alpha mask)
