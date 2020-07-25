@@ -43,6 +43,9 @@ TOPDIR := $(shell pwd)
 ifneq (,$(findstring MINGW32,$(SYSNAME)))
 HOST_OS = WIN32
 else
+ifneq (,$(findstring MINGW64,$(SYSNAME)))
+HOST_OS = WIN64
+else
 ifneq (,$(findstring $(SYSNAME),FreeBSD NetBSD OpenBSD))
 HOST_OS = UNIX
 HOST_UNIX = bsd
@@ -56,6 +59,7 @@ HOST_OS = UNIX
 HOST_UNIX = darwin
 else
 $(error OS type not detected.)
+endif
 endif
 endif
 endif
@@ -76,6 +80,7 @@ ifeq ($(TARGET_OS),WIN64)
 EXT=.exe
 DPTHREAD=
 LPTHREAD=
+SNAPSHOT_TARGET = $(DIST_DIR)/tyrutils-$(TYR_VERSION_NUM)-win64.zip
 ifneq ($(HOST_OS),WIN64)
 TARGET ?= $(MINGW64_CROSS_GUESS)
 CC = $(TARGET)-gcc
@@ -647,6 +652,46 @@ DIST_FILES_WIN32 = $(call DIST_FILES,$(WIN32_DIR))
 
 $(DIST_DIR)/tyrutils-$(TYR_VERSION_NUM)-win32.zip: $(DIST_FILES_WIN32)
 	$(call do_zip,$(DIST_DIR)/win32)
+
+# ----------------------------------------------------------------------------
+# WIN64
+
+WIN64_DIR = $(DIST_DIR)/win64
+
+# Nothing too special required for the binaries...
+$(BUILD_DIR)/win64/bin/$(BIN_PFX)light$(EXT): $(patsubst %,$(BUILD_DIR)/win64/%,$(LIGHT_OBJS))
+	$(call do_cc_link,-lm $(LPTHREAD))
+	$(call do_strip,$@)
+
+$(BUILD_DIR)/win64/bin/$(BIN_PFX)vis$(EXT): $(patsubst %,$(BUILD_DIR)/win64/%,$(VIS_OBJS))
+	$(call do_cc_link,-lm $(LPTHREAD))
+	$(call do_strip,$@)
+
+$(BUILD_DIR)/win64/bin/$(BIN_PFX)bspinfo$(EXT): $(patsubst %,$(BUILD_DIR)/win64/%,$(BSPINFO_OBJS))
+	$(call do_cc_link,-lm $(LPTHREAD))
+	$(call do_strip,$@)
+
+$(BUILD_DIR)/win64/bin/$(BIN_PFX)bsputil$(EXT): $(patsubst %,$(BUILD_DIR)/win64/%,$(BSPUTIL_OBJS))
+	$(call do_cc_link,-lm $(LPTHREAD))
+	$(call do_strip,$@)
+
+$(BUILD_DIR)/win64/bin/$(BIN_PFX)qbsp$(EXT): $(patsubst %,$(BUILD_DIR)/win64/%,$(QBSP_OBJS))
+	$(call do_cc_link,-lm $(LPTHREAD))
+	$(call do_strip,$@)
+
+# Simple rules to copy distribution files
+
+$(DIST_DIR)/win64/bin/%.exe:	$(BUILD_DIR)/win64/bin/%.exe	; $(do_cp)
+$(DIST_DIR)/win64/%.txt:	%.txt		; $(do_cp)
+$(DIST_DIR)/win64/doc/%.1:	doc/%.1		; $(do_cp)
+$(DIST_DIR)/win64/doc/%.txt:	doc/%.txt	; $(do_cp)
+$(DIST_DIR)/win64/doc/%.html:	doc/%.html	; $(do_cp)
+$(DIST_DIR)/win64/COPYING:	COPYING		; $(do_cp)
+
+DIST_FILES_WIN64 = $(call DIST_FILES,$(WIN64_DIR))
+
+$(DIST_DIR)/tyrutils-$(TYR_VERSION_NUM)-win64.zip: $(DIST_FILES_WIN64)
+	$(call do_zip,$(DIST_DIR)/win64)
 
 # ----------------------------------------------------------------------------
 # Source tarball creation
