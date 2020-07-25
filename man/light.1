@@ -62,6 +62,13 @@ surface (more detailed explanation in the "_anglescale" key below).
 Force generation of a .lit file, even if your map does not have any coloured
 lights. By default, light will automatically generate the .lit file when
 needed.
+.IP "\fB\-litonly\fP"
+Force generation of a lit file that will be compatible with the current bsp
+file without modification.  That is, the lit file will be generated with
+lightmap offsets that exactly match the lighting that is already present in
+the bsp.  You usually do NOT want this option except in the circumstance that
+you want to make a coloured light add-on for an existing BSP but you have the
+restriction that the original bsp file must not be modified in any way.
 
 .SH "MODEL ENTITY KEYS"
 

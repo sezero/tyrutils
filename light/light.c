@@ -48,24 +48,25 @@ const dmodel_t *const *tracelist;
 
 int oversample = 1;
 qboolean write_litfile = false;
+qboolean litfile_only = false;
 
-void
-GetFileSpace(byte **lightdata, byte **colordata, int size)
+int32_t
+AllocateLightDataOffset(int numsamples)
 {
+    int32_t offset;
+
     ThreadLock();
 
     /* align to 4 byte boudaries */
     file_p = (byte *)(((uintptr_t)file_p + 3) & ~3);
-    *lightdata = file_p;
-    file_p += size;
+    offset = file_p - filebase;
 
-    if (colordata) {
-	/* align to 12 byte boundaries to match offets with 3 * lightdata */
-	if ((uintptr_t)lit_file_p % 12)
-	    lit_file_p += 12 - ((uintptr_t)lit_file_p % 12);
-	*colordata = lit_file_p;
-	lit_file_p += size * 3;
-    }
+    file_p += numsamples;
+
+    /* align to 12 byte boundaries to match offets with 3 * lightdata */
+    if ((uintptr_t)lit_file_p % 12)
+        lit_file_p += 12 - ((uintptr_t)lit_file_p % 12);
+    lit_file_p += numsamples * 3;
 
     ThreadUnlock();
 
@@ -74,6 +75,20 @@ GetFileSpace(byte **lightdata, byte **colordata, int size)
 
     if (lit_file_p > lit_file_end)
 	Error("%s: overrun", __func__);
+
+    return offset;
+}
+
+byte *
+LightDataDest(const bsp2_dface_t *face)
+{
+    return filebase + face->lightofs;
+}
+
+byte *
+ColorDataDest(const bsp2_dface_t *face)
+{
+    return lit_filebase + 3 * face->lightofs;
 }
 
 static void *
@@ -178,14 +193,13 @@ LightWorld(bsp2_t *bsp)
     if (bsp->dlightdata)
 	free(bsp->dlightdata);
 
-    /* FIXME - remove this limit */
-    bsp->lightdatasize = MAX_MAP_LIGHTING;
-    bsp->dlightdata = malloc(bsp->lightdatasize + 16); /* for alignment */
+    if (!litfile_only)
+        bsp->lightdatasize = MAX_MAP_LIGHTING; /* FIXME - remove this limit */
+
+    bsp->dlightdata = malloc(bsp->lightdatasize * 4 + 16); /* for alignment */
     if (!bsp->dlightdata)
-	Error("%s: allocation of %i bytes failed.",
-	      __func__, bsp->lightdatasize);
-    memset(bsp->dlightdata, 0, bsp->lightdatasize + 16);
-    bsp->lightdatasize /= 4;
+	Error("%s: allocation of %i bytes failed.", __func__, bsp->lightdatasize * 4);
+    memset(bsp->dlightdata, 0, bsp->lightdatasize * 4 + 16);
 
     /* align filebase to a 4 byte boundary */
     filebase = file_p = (byte *)(((uintptr_t)bsp->dlightdata + 3) & ~3);
@@ -194,12 +208,13 @@ LightWorld(bsp2_t *bsp)
     /* litfile data stored in dlightdata, after the white light */
     lit_filebase = file_end + 12 - ((uintptr_t)file_end % 12);
     lit_file_p = lit_filebase;
-    lit_file_end = lit_filebase + 3 * (MAX_MAP_LIGHTING / 4);
+    lit_file_end = lit_filebase + 3 * bsp->lightdatasize;
 
     RunThreadsOn(0, bsp->numfaces, LightThread, bsp);
     logprint("Lighting Completed.\n\n");
 
-    bsp->lightdatasize = file_p - filebase;
+    if (!litfile_only)
+        bsp->lightdatasize = file_p - filebase;
     logprint("lightdatasize: %i\n", bsp->lightdatasize);
 }
 
@@ -247,6 +262,9 @@ main(int argc, const char **argv)
 	    addminlight = true;
 	} else if (!strcmp(argv[i], "-lit")) {
 	    write_litfile = true;
+	} else if (!strcmp(argv[i], "-litonly")) {
+            write_litfile = true;
+	    litfile_only = true;
 	} else if (!strcmp(argv[i], "-soft")) {
 	    if (i < argc - 2 && isdigit(argv[i + 1][0]))
 		softsamples = atoi(argv[++i]);
@@ -266,7 +284,7 @@ main(int argc, const char **argv)
     if (i != argc - 1) {
 	printf("usage: light [-threads num] [-extra|-extra4]\n"
 	       "             [-light num] [-addmin] [-anglescale|-anglesense]\n"
-	       "             [-dist n] [-range n] [-gate n] [-lit]\n"
+	       "             [-dist n] [-range n] [-gate n] [-lit] [-litonly]\n"
 	       "             [-soft [n]] bspfile\n");
 	exit(1);
     }
@@ -312,11 +330,13 @@ main(int argc, const char **argv)
     if (write_litfile)
 	WriteLitFile(bsp, source, LIT_VERSION);
 
-    /* Convert data format back if necessary */
-    if (loadversion != BSP2VERSION)
-	ConvertBSPFormat(loadversion, &bspdata);
+    /* Convert data format back if and write out if necessary */
+    if (!litfile_only) {
+        if (loadversion != BSP2VERSION)
+            ConvertBSPFormat(loadversion, &bspdata);
 
-    WriteBSPFile(source, &bspdata);
+        WriteBSPFile(source, &bspdata);
+    }
 
     end = I_FloatTime();
     logprint("%5.1f seconds elapsed\n", end - start);

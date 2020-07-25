@@ -20,8 +20,6 @@
 #include <light/light.h>
 #include <light/entities.h>
 
-static const vec3_t bsp_origin = { 0, 0, 0 };
-
 /* ======================================================================== */
 
 typedef struct {
@@ -541,13 +539,18 @@ Lightsurf_Init(const modelinfo_t *modelinfo, const bsp2_dface_t *face,
 }
 
 static void
-Lightmaps_Init(lightmap_t *lightmaps, const int count)
+Lightmaps_Init(lightmap_t *lightmaps, const int count, const bsp2_dface_t *face)
 {
-    int i;
-
     memset(lightmaps, 0, sizeof(lightmap_t) * count);
-    for (i = 0; i < count; i++)
-	lightmaps[i].style = 255;
+    for (int i = 0; i < count; i++)
+        lightmaps[i].style = 255;
+
+    /* Keep styles in place if only re-calculating the litfile */
+    if (litfile_only) {
+        for (int i = 0; i < MAXLIGHTMAPS; i++) {
+            lightmaps[i].style = face->styles[i];
+        }
+    }
 }
 
 /*
@@ -586,7 +589,7 @@ Lightmap_Save(lightmap_t *lightmaps, const lightsurf_t *lightsurf,
 	      lightmap_t *lightmap, const int style)
 {
     if (lightmap - lightmaps < MAXLIGHTMAPS) {
-	if (lightmap->style == 255)
+	if (lightmap->style == 255 && !litfile_only)
 	    lightmap->style = style;
 	return;
     }
@@ -893,27 +896,34 @@ LightFace_Min(const lightsample_t *light,
 }
 
 static void
-WriteLightmaps(bsp2_dface_t *face, const lightsurf_t *lightsurf,
-	       const lightmap_t *lightmaps)
+WriteLightmaps(bsp2_dface_t *face, const lightsurf_t *lightsurf, const lightmap_t *lightmaps)
 {
-    int numstyles, size, mapnum, width, s, t, i, j;
+    int numstyles, datasize, mapnum, width, s, t, i, j;
     const lightsample_t *sample;
     vec_t light, maxcolor;
     vec3_t color;
     byte *out, *lit;
 
-    numstyles = 0;
-    for (mapnum = 0; mapnum < MAXLIGHTMAPS; mapnum++) {
-	face->styles[mapnum] = lightmaps[mapnum].style;
-	if (lightmaps[mapnum].style != 255)
-	    numstyles++;
-    }
-    if (!numstyles)
-	return;
+    if (litfile_only) {
+        /* Only write data for lightmaps that exist in the original bsp */
+        if (face->lightofs < 0)
+            return;
+    } else {
+        numstyles = 0;
+        for (mapnum = 0; mapnum < MAXLIGHTMAPS; mapnum++) {
+            face->styles[mapnum] = lightmaps[mapnum].style;
+            if (lightmaps[mapnum].style != 255)
+                numstyles++;
+        }
+        if (!numstyles)
+            return;
 
-    size = (lightsurf->texsize[0] + 1) * (lightsurf->texsize[1] + 1);
-    GetFileSpace(&out, &lit, size * numstyles);
-    face->lightofs = out - filebase;
+        datasize = numstyles * (lightsurf->texsize[0] + 1) * (lightsurf->texsize[1] + 1);
+        face->lightofs = AllocateLightDataOffset(datasize);
+    }
+
+    out = LightDataDest(face);
+    lit = ColorDataDest(face);
 
     width = (lightsurf->texsize[0] + 1) * oversample;
     for (mapnum = 0; mapnum < MAXLIGHTMAPS; mapnum++) {
@@ -983,14 +993,16 @@ LightFace(bsp2_dface_t *face, const modelinfo_t *modelinfo,
     lightmap_t lightmaps[MAXLIGHTMAPS + 1];
 
     /* some surfaces don't need lightmaps */
-    face->lightofs = -1;
-    for (i = 0; i < MAXLIGHTMAPS; i++)
-	face->styles[i] = 255;
+    if (!litfile_only) {
+        face->lightofs = -1;
+        for (i = 0; i < MAXLIGHTMAPS; i++)
+            face->styles[i] = 255;
+    }
     if (bsp->texinfo[face->texinfo].flags & TEX_SPECIAL)
-	return;
+        return;
 
     Lightsurf_Init(modelinfo, face, bsp, &lightsurf);
-    Lightmaps_Init(lightmaps, MAXLIGHTMAPS + 1);
+    Lightmaps_Init(lightmaps, MAXLIGHTMAPS + 1, face);
 
     /*
      * The lighting procedure is: cast all positive lights, fix

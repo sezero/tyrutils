@@ -104,16 +104,18 @@ extern lightsample_t minlight;
 extern lightsample_t sunlight;
 extern vec3_t sunvec;
 
-/*
- * Return space for the lightmap and colourmap at the same time so it can
- * be done in a thread-safe manner.
- */
-void GetFileSpace(byte **lightdata, byte **colordata, int size);
+/* Reserve space for the white/colour light data and return the offset for the data in the bsp */
+int32_t AllocateLightDataOffset(int numsamples);
+
+/* Return the pointer to the destination to write light data at the given offset */
+byte *LightDataDest(const bsp2_dface_t *face);
+byte *ColorDataDest(const bsp2_dface_t *face);
 
 extern byte *filebase;
 extern byte *lit_filebase;
 
 extern int oversample;
 extern qboolean write_litfile;
+extern qboolean litfile_only;
 
 #endif /* __LIGHT_LIGHT_H__ */
