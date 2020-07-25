@@ -1,7 +1,7 @@
-Updated 2020-07-25
+Updated 2020-07-26
 
 ------------------
- Tyr-Utils (v0.16)
+ Tyr-Utils (v0.17)
 ------------------
   Website: http://disenchant.net
   Author:  Kevin Shanahan (AKA Tyrann)
