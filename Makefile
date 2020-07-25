@@ -99,31 +99,23 @@ endif
 #BIN_PFX ?= tyr-
 BIN_PFX ?=
 
-# ---------------------------------------
-# Define some build variables
-# ---------------------------------------
-
-STRIP ?= strip
-GROFF ?= groff
-CFLAGS := $(CFLAGS) -Wall -Wno-trigraphs -Wwrite-strings -Wcast-qual
-
-ifeq ($(DEBUG),Y)
-CFLAGS += -g
-else
-ifeq ($(OPTIMIZED_CFLAGS),Y)
-CFLAGS += -O2
-# -funit-at-a-time is buggy for MinGW GCC > 3.2
-# I'm assuming it's fixed for MinGW GCC >= 4.0 when that comes about
-CFLAGS += $(call cc-option,-fno-unit-at-a-time,)
-CFLAGS += $(call cc-option,-fweb,)
-CFLAGS += $(call cc-option,-frename-registers,)
-CFLAGS += $(call cc-option,-ffast-math,)
-endif
-endif
-
 # ============================================================================
 # Helper functions
 # ============================================================================
+
+# --------------------------------
+# GCC version and option checking
+# --------------------------------
+
+cc-version = $(shell sh $(TOPDIR)/scripts/gcc-version \
+              $(if $(1), $(1), $(CC)))
+
+if-cc-option = $(shell if $(CC) $(CFLAGS) -Werror $(1) -S -o /dev/null -xc /dev/null \
+             > /dev/null 2>&1; then echo "$(2)"; else echo "$(3)"; fi ;)
+
+cc-option = $(call if-cc-option,$(1),$(1),$(2))
+
+GCC_VERSION := $(call cc-version,)
 
 # ------------------------------------------------------------------------
 # Try to guess the MinGW cross compiler executables
@@ -147,12 +139,33 @@ MINGW64_CROSS_GUESS := $(shell \
 		echo x86_64-w64-mingw32; \
 	fi)
 
-# --------------------------------
-# GCC option checking
-# --------------------------------
+# ---------------------------------------
+# Define some build variables
+# ---------------------------------------
 
-cc-option = $(shell if $(CC) $(CFLAGS) $(1) -S -o /dev/null -xc /dev/null \
-             > /dev/null 2>&1; then echo "$(1)"; else echo "$(2)"; fi ;)
+STRIP ?= strip
+GROFF ?= groff
+CFLAGS := $(CFLAGS) -Wall -Wno-trigraphs -Wwrite-strings -Wcast-qual
+CFLAGS += $(call cc-option,-std=gnu99)
+
+ifeq ($(DEBUG),Y)
+CFLAGS += -g
+else
+ifeq ($(OPTIMIZED_CFLAGS),Y)
+CFLAGS += -O2
+# -funit-at-a-time is buggy for MinGW GCC > 3.2
+# I'm assuming it's fixed for MinGW GCC >= 4.0 when that comes about
+CFLAGS += $(shell if [ $(GCC_VERSION) -lt 0400 ] ;\
+		then echo $(call cc-option,-fno-unit-at-a-time,); fi ;)
+CFLAGS += $(call cc-option,-fweb,)
+CFLAGS += $(call cc-option,-frename-registers,)
+# Enable some math optimisations, but not the full -fast-math
+# or -funsafe-math-optimisations which might negatively affect qbsp in particular
+CFLAGS += $(call cc-option,-fno-math-errno)
+CFLAGS += $(call cc-option,-ffinite-math-only)
+CFLAGS += $(call cc-option,-fno-signaling-nans)
+endif
+endif
 
 # ---------------------------------------------------------------------------
 # Build commands
@@ -588,7 +601,11 @@ $(eval $(call OSX_ARCH_BIN_RULES,$(BUILD_DIR)/osx-intel-64,-arch x86_64))
 $(eval $(call OSX_ARCH_BIN_RULES,$(BUILD_DIR)/osx-ppc-32,-arch ppc))
 $(eval $(call OSX_ARCH_BIN_RULES,$(BUILD_DIR)/osx-ppc-64,-arch ppc64))
 
-OSX_ARCHS = intel-32 intel-64
+OSX_ARCHS :=
+OSX_ARCHS += $(call if-cc-option,-arch i386,intel-32)
+OSX_ARCHS += $(call if-cc-option,-arch x86_64,intel-64)
+OSX_ARCHS += $(call if-cc-option,-arch ppc,ppc-32)
+OSX_ARCHS += $(call if-cc-option,-arch ppc64,ppc-64)
 
 # Combine the arch binaries with lipo
 osx-arch-bins = $(foreach ARCH,$(OSX_ARCHS),$(BUILD_DIR)/osx-$(ARCH)/bin/$(1))
