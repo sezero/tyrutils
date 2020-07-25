@@ -97,8 +97,8 @@ WADList_Init(const char *wadstring)
 	    pos++;
 
 	if (!options.wadPath[0] || IsAbsolutePath(fname)) {
-	    fpath = AllocMem(OTHER, (pos - fname) + 1, false);
-	    snprintf(fpath, (pos - fname) + 1, "%s", fname);
+	    fpath = AllocMem(OTHER, pos - fname + 1, false);
+	    snprintf(fpath, pos - fname + 1, "%s", fname);
 	} else {
 	    pathlen = strlen(options.wadPath) + 1 + (pos - fname);
 	    fpath = AllocMem(OTHER, pathlen + 1, true);
@@ -117,6 +117,8 @@ WADList_Init(const char *wadstring)
 		Message(msgWarning, warnNotWad, fpath);
 		fclose(wad.file);
 	    }
+	} else {
+	    Message(msgLiteral, "Unable to open WAD: %s\n", fpath);
 	}
 	FreeMem(fpath, OTHER, strlen(fpath) + 1);
 	pos++;
