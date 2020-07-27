@@ -451,7 +451,7 @@ WarnBadMidpoint(const vec3_t point)
  */
 __attribute__((noinline))
 static void
-CalcPoints(const dmodel_t *model, const texorg_t *texorg, lightsurf_t *surf)
+CalcPoints(const dmodel_t *model, const texorg_t *texorg, lightsurf_t *surf, int oversample)
 {
     int i;
     int s, t;
@@ -507,7 +507,7 @@ CalcPoints(const dmodel_t *model, const texorg_t *texorg, lightsurf_t *surf)
 __attribute__((noinline))
 static void
 Lightsurf_Init(const modelinfo_t *modelinfo, const bsp2_dface_t *face,
-	       const bsp2_t *bsp, lightsurf_t *lightsurf)
+	       const bsp2_t *bsp, lightsurf_t *lightsurf, int oversample)
 {
     plane_t *plane;
     vec3_t planepoint;
@@ -535,7 +535,7 @@ Lightsurf_Init(const modelinfo_t *modelinfo, const bsp2_dface_t *face,
 
     /* Set up the surface points */
     CalcFaceExtents(face, modelinfo->offset, bsp, lightsurf);
-    CalcPoints(modelinfo->model, &texorg, lightsurf);
+    CalcPoints(modelinfo->model, &texorg, lightsurf, oversample);
 }
 
 static void
@@ -1001,7 +1001,7 @@ LightFace(bsp2_dface_t *face, const modelinfo_t *modelinfo,
     if (bsp->texinfo[face->texinfo].flags & TEX_SPECIAL)
         return;
 
-    Lightsurf_Init(modelinfo, face, bsp, &lightsurf);
+    Lightsurf_Init(modelinfo, face, bsp, &lightsurf, oversample);
     Lightmaps_Init(lightmaps, MAXLIGHTMAPS + 1, face);
 
     /*
