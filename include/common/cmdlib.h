@@ -113,6 +113,7 @@ char *copystring(const char *s);
 void CRC_Init(unsigned short *crcvalue);
 void CRC_ProcessByte(unsigned short *crcvalue, byte data);
 unsigned short CRC_Value(unsigned short crcvalue);
+unsigned short CRC_Block (const unsigned char *start, int count);
 
 void CreatePath(char *path);
 void CopyFile(const char *from, char *to);

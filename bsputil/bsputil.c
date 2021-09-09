@@ -289,11 +289,12 @@ main(int argc, char **argv)
 
     for (i = 0; i < argc - 1; i++) {
 	if (!strcmp(argv[i], "--extract-entities")) {
+	    unsigned int crc = CRC_Block((byte *)bsp->dentdata, bsp->entdatasize - 1);
 	    StripExtension(source);
 	    DefaultExtension(source, ".ent");
-	    printf("-> writing %s... ", source);
+	    printf("-> writing %s [CRC: %04x]... ", source, crc);
 
-	    f = fopen(source, "w");
+	    f = fopen(source, "wb");
 	    if (!f)
 		Error("couldn't open %s for writing\n", source);
 
