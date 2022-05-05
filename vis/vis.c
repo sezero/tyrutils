@@ -1,7 +1,6 @@
 // vis.c
 
 #include <limits.h>
-#include <stddef.h>
 #include <stdint.h>
 
 #include <vis/leafbits.h>

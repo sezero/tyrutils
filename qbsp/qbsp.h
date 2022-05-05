@@ -23,6 +23,7 @@
 #ifndef QBSP_H
 #define QBSP_H
 
+#include <stddef.h>
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -37,10 +38,6 @@
 #include "bspfile.h"
 #include "file.h"
 #include "warnerr.h"
-
-#ifndef offsetof
-#define offsetof(type, member) __builtin_offsetof(type, member)
-#endif
 
 //===== cmdlib.h
 

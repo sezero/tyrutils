@@ -20,15 +20,13 @@
 #ifndef VIS_LEAFBITS_H
 #define VIS_LEAFBITS_H
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
 /* Use some GCC builtins */
 #ifndef ffsl
 #define ffsl __builtin_ffsl
-#endif
-#ifndef offsetof
-#define offsetof(type, member)  __builtin_offsetof(type, member)
 #endif
 
 typedef unsigned long leafblock_t;

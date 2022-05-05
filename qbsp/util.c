@@ -19,7 +19,6 @@
     See file, 'COPYING', for details.
 */
 
-#include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
