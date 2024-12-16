@@ -31,7 +31,18 @@
 #define stringify__(x) #x
 #define stringify(x) stringify__(x)
 
-typedef enum { false, true } qboolean;
+typedef int qboolean;
+#undef true
+#undef false
+#if defined __STDC_VERSION__ && (__STDC_VERSION__ >= 199901L)
+#include <stdbool.h>
+#else
+enum {
+    false = 0,
+    true  = 1
+};
+#endif
+
 typedef unsigned char byte;
 
 /* min and max macros with type checking */
